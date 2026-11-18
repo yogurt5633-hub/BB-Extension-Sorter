@@ -488,3 +488,22 @@ body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content {
     .bb-folder .bb-folder-chevron,
     #bb-sort-modal-overlay .bb-light-item { transition: none !important; }
 }
+
+/* === FIX: Буфер папки, чтобы колонка не выталкивала папку из-под пальца === */
+#bb-sort-modal-overlay .bb-modal-col {
+    min-height: max-content !important;
+    padding-bottom: 28px !important;
+}
+#bb-sort-modal-overlay .bb-light-folder {
+    margin-bottom: 20px !important;
+    padding-bottom: 12px !important;
+    overflow: visible !important;
+}
+#bb-sort-modal-overlay .bb-light-folder-content {
+    min-height: 52px !important;
+    padding: 10px 8px 12px 12px !important;
+    margin: 8px 6px 4px 10px !important;
+}
+body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content {
+    min-height: 68px !important;
+}
