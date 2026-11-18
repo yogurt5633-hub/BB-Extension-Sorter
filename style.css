@@ -251,9 +251,9 @@
     display: block !important;
     flex: 1 1 0;
     min-width: 0;
-    min-height: 84px;
+    min-height: max-content;
     margin: 0 !important;
-    padding: 10px !important;
+    padding: 10px 10px 28px 10px !important;
     box-sizing: border-box !important;
     border: 1px solid var(--bb-line);
     border-radius: 12px;
@@ -330,13 +330,15 @@
     touch-action: none;
 }
 #bb-sort-modal-overlay .bb-drag-handle:active { cursor: grabbing; }
+
+/* Важно: отступы снизу у папки предотвращают выталкивание папки родительской колонкой при перетаскивании внутрь */
 #bb-sort-modal-overlay .bb-light-folder {
     display: block !important;
-    padding: 0 0 6px !important;
-    margin: 0 0 8px !important;
+    padding: 0 0 12px !important;
+    margin: 0 0 20px !important;
     border-color: var(--bb-line) !important;
-    background: rgba(0,0,0,.12) !important;
-    overflow: hidden;
+    border-left: 3px solid var(--folder-color, #8a9ba8) !important;
+    background: rgba(0,0,0,.14) !important;
 }
 #bb-sort-modal-overlay .bb-light-folder::after { display: none !important; }
 #bb-sort-modal-overlay .bb-light-folder-header {
@@ -346,9 +348,8 @@
     gap: 8px;
     min-width: 0;
     min-height: 40px;
-    padding: 0 6px 0 0;
+    padding: 0 6px 0 4px;
     border-bottom: 1px solid var(--bb-line);
-    border-left: 3px solid var(--folder-color, #8a9ba8);
 }
 #bb-sort-modal-overlay .bb-light-folder-header > .fa-folder {
     color: var(--folder-color, #8a9ba8);
@@ -369,26 +370,35 @@
 #bb-sort-modal-overlay .bb-folder-action:hover { color: var(--SmartThemeTextColor, #e8eaf0) !important; background: var(--bb-row-hover) !important; }
 #bb-sort-modal-overlay .bb-folder-action:focus-visible { outline: 2px solid var(--SmartThemeQuoteColor, #9da8b8); outline-offset: -2px; }
 #bb-sort-modal-overlay .bb-del-btn:hover { color: #df8585 !important; }
+
 #bb-sort-modal-overlay .bb-light-folder-content {
     box-sizing: border-box;
-    min-height: 34px;
-    margin: 6px 6px 0 10px !important;
-    padding: 4px 4px 0 8px !important;
-    border-left: 1px solid var(--bb-line-strong);
-    background: transparent !important;
-    transition: background-color 140ms ease;
+    min-height: 42px;
+    margin: 8px 8px 0 12px !important;
+    padding: 8px 8px 6px 10px !important;
+    border-left: 2px dashed var(--folder-color, #8a9ba8);
+    border-radius: 0 6px 6px 0;
+    background: rgba(255, 255, 255, 0.02) !important;
+    transition: background-color 140ms ease, min-height 140ms ease;
 }
 #bb-sort-modal-overlay .bb-light-folder-content:empty::before {
     content: 'Перетащите расширения сюда';
     display: block;
-    padding: 5px 0 8px;
+    padding: 6px 0;
     font-size: 11px;
     line-height: 16px;
     color: var(--bb-muted);
     pointer-events: none;
 }
-body.bb-dragging-folder #bb-sort-modal-overlay .bb-light-folder-content { pointer-events: none !important; }
-body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content { min-height: 44px; background: rgba(255,255,255,.025) !important; }
+body.bb-dragging-folder #bb-sort-modal-overlay .bb-light-folder-content {
+    pointer-events: none !important;
+    background: rgba(239, 68, 68, 0.05) !important;
+    border-color: rgba(239, 68, 68, 0.25) !important;
+}
+body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content {
+    min-height: 56px;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
 #bb-sort-modal-overlay .bb-sortable-placeholder {
     visibility: visible !important;
     box-sizing: border-box;
@@ -396,7 +406,7 @@ body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content { min-heigh
     margin: 0 0 6px !important;
     border: 1px dashed var(--bb-line-strong) !important;
     border-radius: 8px;
-    background: rgba(140, 152, 169, .10) !important;
+    background: rgba(140, 152, 169, .12) !important;
 }
 #bb-sort-modal-overlay .ui-sortable-helper.bb-light-item {
     opacity: .96 !important;
@@ -453,12 +463,14 @@ body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content { min-heigh
 @media (max-width: 768px) {
     .bb-modal-grid { flex-direction: column !important; gap: 10px; }
     #bb-sort-modal-overlay .bb-sort-modal { padding: 12px !important; }
-    .bb-modal-col { flex: 0 0 auto; width: 100% !important; padding: 8px !important; }
+    .bb-modal-col { flex: 0 0 auto; width: 100% !important; padding: 8px 8px 22px 8px !important; }
     #bb-sort-modal-overlay .bb-light-item { min-height: 44px; }
     #bb-sort-modal-overlay .bb-drag-handle { flex-basis: 38px; font-size: 15px; }
+    #bb-sort-modal-overlay .bb-light-folder { margin-bottom: 16px !important; padding-bottom: 10px !important; }
     #bb-sort-modal-overlay .bb-light-folder-header { min-height: 44px; }
     #bb-sort-modal-overlay .bb-folder-action { width: 34px; height: 36px; flex-basis: 34px; }
-    #bb-sort-modal-overlay .bb-light-folder-content { min-height: 40px; }
+    #bb-sort-modal-overlay .bb-light-folder-content { min-height: 48px; }
+    body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content { min-height: 64px; }
     .bb-folder > .bb-folder-toggle { height: 44px !important; min-height: 44px !important; max-height: 44px !important; }
 }
 
@@ -475,17 +487,4 @@ body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content { min-heigh
     .bb-folder > .bb-folder-toggle,
     .bb-folder .bb-folder-chevron,
     #bb-sort-modal-overlay .bb-light-item { transition: none !important; }
-}
-
-/* === FIX: Расширенная зона сброса папок для мобильных === */
-#bb-sort-modal-overlay .bb-light-folder-content {
-    min-height: 54px !important;
-    padding: 10px 8px 12px 12px !important;
-    margin: 6px 6px 4px 10px !important;
-    border-left: 2px dashed var(--folder-color, #8a9ba8) !important;
-    background: rgba(255, 255, 255, 0.03) !important;
-}
-body.bb-dragging-ext #bb-sort-modal-overlay .bb-light-folder-content {
-    min-height: 68px !important;
-    background: rgba(255, 255, 255, 0.07) !important;
 }

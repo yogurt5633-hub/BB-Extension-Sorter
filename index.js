@@ -23,11 +23,11 @@ if (!extension_settings[MODULE_NAME]) {
 // === УМНЫЕ ФИЛЬТРЫ ===
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
+        '&': '&',
+        '<': '<',
+        '>': '>',
+        '"': '"',
+        "'": ''',
     }[char]));
 }
 
@@ -56,12 +56,12 @@ function isRealExtension(el) {
 
 function getTitle(el) {
     if ($(el).hasClass('bb-folder')) return $(el).attr('data-name');
-    
+
     const header = $(el).children('.inline-drawer-header, .inline-drawer-toggle, .panel-heading').first()
         .add($(el).find('.inline-drawer-header, .inline-drawer-toggle, .panel-heading').first())
         .first();
     let title = "";
-    
+
     if (header.length > 0) {
         const titleSelectors = [
             '[data-extension-title]',
@@ -105,7 +105,7 @@ function getTitle(el) {
             if (!title) title = cleanTitle(header.text());
         }
     } else {
-        return null; 
+        return null;
     }
     return cleanTitle(title);
 }
@@ -184,7 +184,6 @@ function withLayoutObserverSuppressed(callback) {
     try {
         return callback();
     } finally {
-        // Discard our synchronous moves, without ignoring other extensions on the next tick.
         layoutObserver?.takeRecords();
         suppressLayoutObserver--;
     }
@@ -258,7 +257,6 @@ function preserveMissingExtensions(layout, renamedFolders = {}) {
         preserve(items, layout[side]);
         items.filter(item => item.type === 'folder').forEach(item => {
             const name = renamedFolders[item.title] || item.title;
-            // Deleting a folder releases even temporarily absent panels into its column.
             const target = layout.folders[name]?.items || layout[side];
             preserve(folderItems(previous.folders?.[item.title]), target);
         });
@@ -342,7 +340,7 @@ $('body').off('click', '.bb-folder-edit-main').on('click', '.bb-folder-edit-main
 
 function saveLayoutMain(renamedFolders = {}) {
     const layout = { left: [], right: [], folders: {} };
-    
+
     const processCol = (selector, arr) => {
         $(selector).find('> div').each(function() {
             if (!isRealExtension(this)) return;
@@ -352,7 +350,7 @@ function saveLayoutMain(renamedFolders = {}) {
                 const fColor = $(this).find('.bb-color-picker').val() || '#a855f7';
                 arr.push({ type: 'folder', title: fName });
                 layout.folders[fName] = { color: fColor, items: [] };
-                
+
                 $(this).find('.bb-folder-content > div').each(function() {
                     if (!isRealExtension(this)) return;
                     const item = getLayoutExtItem(this);
@@ -419,10 +417,16 @@ function restoreLayout() {
 
 // === СОРТИРОВКА В ПУЛЬТЕ ===
 function initModalSortable() {
+    $('.bb-modal-col, .bb-light-folder-content').each(function() {
+        if ($(this).data('ui-sortable') || $(this).hasClass('ui-sortable')) {
+            try { $(this).sortable('destroy'); } catch (e) {}
+        }
+    });
+
     const sortableOptions = {
         connectWith: '.bb-modal-col, .bb-light-folder-content',
         items: '> .bb-light-item',
-        handle: '.bb-drag-handle', // <--- ВОТ ОНО! Хватаем только за ручку
+        handle: '.bb-drag-handle',
         placeholder: 'bb-sortable-placeholder',
         tolerance: 'pointer',
         cursor: 'grabbing',
@@ -432,10 +436,9 @@ function initModalSortable() {
         revert: 150,
         forcePlaceholderSize: true,
         refreshPositions: true,
-        delay: 50 // Оставил минимальную задержку от случайных микро-свайпов
+        delay: 50
     };
 
-    // Применяем к колонкам
     $('.bb-modal-col').sortable({
         ...sortableOptions,
         start: function(e, ui) {
@@ -446,23 +449,24 @@ function initModalSortable() {
                 $('.bb-modal-col').sortable('refresh');
             } else {
                 $('body').addClass('bb-dragging-ext');
+                $('.bb-modal-col, .bb-light-folder-content').sortable('refreshPositions');
             }
         },
-        stop: function(e, ui) {
+        stop: function() {
             $('body').removeClass('bb-dragging-folder bb-dragging-ext');
             $('.bb-modal-col').sortable('option', 'connectWith', '.bb-modal-col, .bb-light-folder-content');
         }
     });
 
-    // Применяем к содержимому папок
     $('.bb-light-folder-content').sortable({
         ...sortableOptions,
         items: '> .bb-light-item:not(.bb-light-folder)',
         start: function(e, ui) {
             ui.placeholder.height(ui.item.outerHeight());
             $('body').addClass('bb-dragging-ext');
+            $('.bb-modal-col, .bb-light-folder-content').sortable('refreshPositions');
         },
-        stop: function(e, ui) {
+        stop: function() {
             $('body').removeClass('bb-dragging-ext');
         }
     });
@@ -474,16 +478,15 @@ function openSorterModal() {
     restoreLayout();
 
     let foundExts = new Set();
-    
+
     const getExtHtml = (el) => {
-        if (!isRealExtension(el)) return ''; 
+        if (!isRealExtension(el)) return '';
         const identity = getExtensionIdentity(el);
         const eName = identity.title;
         const eKey = identity.key;
         const dedupeKey = eKey || `title:${normalizeTitleForMatch(eName)}`;
         if (eName && !foundExts.has(dedupeKey)) {
             foundExts.add(dedupeKey);
-            // Добавил иконку-ручку (.bb-drag-handle) перед пазлом
             return `<div class="bb-light-item" data-type="ext" data-title="${escapeHtml(eName)}" data-key="${escapeHtml(eKey || '')}">
                         <i class="fa-solid fa-grip-vertical bb-drag-handle"></i>
                         <i class="fa-solid fa-puzzle-piece bb-ext-icon" aria-hidden="true"></i><span class="bb-ext-title">${escapeHtml(eName)}</span>
@@ -512,7 +515,7 @@ function openSorterModal() {
                             <button type="button" class="bb-folder-action bb-del-btn" title="Удалить" aria-label="Удалить папку"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                         </div>
                         <div class="bb-light-folder-content">`;
-                
+
                 $(this).find('.bb-folder-content > div').each(function() {
                     html += getExtHtml(this);
                 });
@@ -534,7 +537,7 @@ function openSorterModal() {
                     <h2>Порядок расширений</h2>
                     <p class="bb-sort-description">Перетаскивайте элементы за ручку, чтобы изменить расположение</p>
                 </div>
-                
+
                 <div class="popup-content bb-modal-grid">
                     <div class="bb-modal-col" id="bb-modal-left">
                         <div class="bb-modal-col-title">Левая колонка</div>
@@ -545,9 +548,9 @@ function openSorterModal() {
                         ${rightColHtml}
                     </div>
                 </div>
-                
+
                 <div class="bb-sort-footer">
-                    <div class="menu_button interactable" id="bb-modal-add-folder"><i class="fa-solid fa-folder-plus"></i>&nbsp;Новая папка</div>
+                    <div class="menu_button interactable" id="bb-modal-add-folder"><i class="fa-solid fa-folder-plus"></i> Новая папка</div>
                     <div class="bb-sort-footer-actions">
                         <div class="menu_button interactable" id="bb-modal-cancel">Отмена</div>
                         <div class="menu_button interactable" id="bb-modal-save">Применить</div>
@@ -575,14 +578,14 @@ function openSorterModal() {
                     <div class="bb-light-folder-content"></div>
                 </div>
             `);
-            initModalSortable(); 
+            initModalSortable();
         }
     });
 
     $('body').off('click', '.bb-del-btn').on('click', '.bb-del-btn', function() {
         const folder = $(this).closest('.bb-light-folder');
         const children = folder.find('.bb-light-folder-content > div');
-        folder.parent().append(children); 
+        folder.parent().append(children);
         folder.remove();
     });
 
@@ -590,7 +593,7 @@ function openSorterModal() {
         const folder = $(this).closest('.bb-light-folder');
         const oldName = folder.attr('data-title');
         const newName = prompt("Новое имя:", oldName);
-        
+
         if (newName && newName.trim() && newName.trim() !== oldName) {
             folder.attr('data-title', newName.trim());
             folder.find('.folder-title-text').text(newName.trim());
@@ -604,19 +607,19 @@ function openSorterModal() {
         const renamedFolders = {};
         const realLeftCol = $('#extensions_settings');
         const realRightCol = $('#extensions_settings2');
-        
+
         const applyColumn = (modalColId, realCol, targetArray) => {
             $(modalColId).find('> .bb-light-item').each(function() {
                 const type = $(this).attr('data-type');
                 const title = $(this).attr('data-title');
                 const key = $(this).attr('data-key') || null;
-                
+
                 if (type === 'folder') {
                     const originalTitle = $(this).attr('data-original-title');
                     if (originalTitle) renamedFolders[originalTitle] = title;
                     const color = $(this).attr('data-color') || '#8a9ba8';
-                    createFolderElement(title, color); 
-                    
+                    createFolderElement(title, color);
+
                     const realFolder = findFolderElement(title);
                     realFolder.css('--folder-color', color);
                     realFolder.find('.bb-color-picker').val(color);
@@ -625,7 +628,7 @@ function openSorterModal() {
                     realCol.append(realFolder);
                     targetArray.push({ type: 'folder', title: title });
                     layout.folders[title] = { color: color, items: [] };
-                    
+
                     $(this).find('.bb-light-folder-content > div').each(function() {
                         const extTitle = $(this).attr('data-title');
                         const extKey = $(this).attr('data-key') || null;
@@ -666,13 +669,12 @@ function openSorterModal() {
         closeSorterModal();
     });
 
-    initModalSortable(); 
+    initModalSortable();
 }
 
 function injectControls() {
     if ($('#bb-open-sorter-btn').length > 0) return;
-    
-    // Добавил margin-bottom: 5px, чтобы на мобилках кнопка не прилипала к нижним элементам
+
     const btnHtml = `
         <div id="bb-open-sorter-btn" class="menu_button interactable" title="Порядок расширений" aria-label="Порядок расширений">
             <i class="fa-solid fa-list-check"></i>
@@ -682,7 +684,6 @@ function injectControls() {
 
     const targetBtn = $('.menu_button:has(.fa-cubes)').first();
     if (targetBtn.length > 0) {
-        // Убрали грязный хак с .parent().css(...), чтобы не ломать заводскую верстку Таверны!
         targetBtn.before(btnHtml);
     } else {
         $('#extensions_settings').before(`<div style="margin-bottom:10px;">${btnHtml}</div>`);
@@ -699,7 +700,7 @@ jQuery(async () => {
                 injectControls();
                 restoreLayout();
                 initLayoutObserver();
-                
+
                 let checkAttempts = 0;
                 let heartbeat = setInterval(() => {
                     restoreLayout();
