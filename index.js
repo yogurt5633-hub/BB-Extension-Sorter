@@ -265,20 +265,22 @@ function preserveMissingExtensions(layout, renamedFolders = {}) {
     }
 }
 
-// === УПРАВЛЕНИЕ РОДНЫМИ ПАПКАМИ ===
-function createFolderElement(name, color = '#a855f7') {
+// === КОМПАКТНЫЕ ПАПКИ В МЕНЮ РАСШИРЕНИЙ ===
+function createFolderElement(name, color = '#8a9ba8') {
     if (findFolderElement(name).length > 0) return;
     const safeName = escapeHtml(name);
     const safeColor = escapeHtml(color);
-    
+
     const html = `
         <div class="inline-drawer bb-folder" data-name="${safeName}" style="--folder-color: ${safeColor};">
-            <div class="bb-folder-toggle inline-drawer-header">
-                <b class="bb-folder-title" style="color: var(--folder-color);">&#128193; ${safeName}</b>
-                <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
-                    <input type="color" class="bb-color-picker" value="${safeColor}" title="Изменить цвет">
-                    <i class="fa-solid fa-pen bb-folder-edit-main" title="Переименовать" style="cursor:pointer; color: var(--folder-color);"></i>
-                    <div class="inline-drawer-icon fa-solid fa-chevron-down down"></div>
+            <div class="bb-folder-toggle" role="button" tabindex="0" aria-expanded="false" aria-label="Папка ${safeName}">
+                <i class="fa-solid fa-folder bb-folder-icon" aria-hidden="true"></i>
+                <span class="bb-folder-title">${safeName}</span>
+                <span class="bb-folder-count" title="Расширений в папке">0</span>
+                <div class="bb-folder-actions">
+                    <input type="color" class="bb-color-picker" value="${safeColor}" title="Цвет папки" aria-label="Цвет папки ${safeName}">
+                    <button type="button" class="bb-folder-action bb-folder-edit-main" title="Переименовать" aria-label="Переименовать папку ${safeName}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                    <i class="fa-solid fa-chevron-down bb-folder-chevron" aria-hidden="true"></i>
                 </div>
             </div>
             <div class="inline-drawer-content bb-folder-content" style="display:none;"></div>
@@ -287,12 +289,31 @@ function createFolderElement(name, color = '#a855f7') {
     $('#extensions_settings').prepend(html);
 }
 
+function updateFolderCounts() {
+    $('.bb-folder').each(function() {
+        const count = $(this).children('.bb-folder-content').children().filter(function() {
+            return isRealExtension(this);
+        }).length;
+        $(this).find('> .bb-folder-toggle > .bb-folder-count').text(count);
+    });
+}
+
+function toggleFolder(folder) {
+    const isOpen = folder.toggleClass('open').hasClass('open');
+    folder.children('.bb-folder-toggle').attr('aria-expanded', String(isOpen));
+    const content = folder.children('.bb-folder-content');
+    content.stop(true, true).slideToggle(160);
+}
+
 $('body').off('click', '.bb-folder > .bb-folder-toggle').on('click', '.bb-folder > .bb-folder-toggle', function(e) {
-    if ($(e.target).closest('i, input').length) return; 
-    const folder = $(this).closest('.bb-folder');
-    folder.toggleClass('open');
-    $(this).siblings('.inline-drawer-content').slideToggle(200);
-    $(this).find('.inline-drawer-icon').toggleClass('down up');
+    if ($(e.target).closest('.bb-folder-edit-main, .bb-color-picker').length) return;
+    toggleFolder($(this).closest('.bb-folder'));
+});
+
+$('body').off('keydown', '.bb-folder > .bb-folder-toggle').on('keydown', '.bb-folder > .bb-folder-toggle', function(e) {
+    if (e.target !== this || !['Enter', ' '].includes(e.key)) return;
+    e.preventDefault();
+    toggleFolder($(this).closest('.bb-folder'));
 });
 
 $('body').off('change', '.bb-color-picker').on('change', '.bb-color-picker', function() {
@@ -300,7 +321,7 @@ $('body').off('change', '.bb-color-picker').on('change', '.bb-color-picker', fun
     const folder = $(this).closest('.bb-folder');
     const color = $(this).val();
     folder.css('--folder-color', color);
-    folder.find('.bb-folder-title, .bb-folder-edit-main').css('color', color);
+    folder.find('.bb-folder-icon').css('color', color);
     saveLayoutMain();
 });
 
@@ -311,7 +332,10 @@ $('body').off('click', '.bb-folder-edit-main').on('click', '.bb-folder-edit-main
     const newName = prompt("Новое имя папки:", oldName);
     if (newName && newName.trim() && newName.trim() !== oldName) {
         folder.attr('data-name', newName.trim());
-        folder.find('.bb-folder-title').text('📁 ' + newName.trim());
+        folder.find('.bb-folder-title').text(newName.trim());
+        folder.find('.bb-folder-toggle').attr('aria-label', 'Папка ' + newName.trim());
+        folder.find('.bb-color-picker').attr('aria-label', 'Цвет папки ' + newName.trim());
+        folder.find('.bb-folder-edit-main').attr('aria-label', 'Переименовать папку ' + newName.trim());
         saveLayoutMain({ [oldName]: newName.trim() });
     }
 });
@@ -345,6 +369,7 @@ function saveLayoutMain(renamedFolders = {}) {
     processCol('#extensions_settings2', layout.right);
 
     preserveMissingExtensions(layout, renamedFolders);
+    updateFolderCounts();
     extension_settings[MODULE_NAME].layout = layout;
     saveSettingsDebounced();
 }
@@ -388,6 +413,7 @@ function restoreLayout() {
 
         if (layout.left) processCol('#extensions_settings', layout.left);
         if (layout.right) processCol('#extensions_settings2', layout.right);
+        updateFolderCounts();
     });
 }
 
@@ -460,7 +486,7 @@ function openSorterModal() {
             // Добавил иконку-ручку (.bb-drag-handle) перед пазлом
             return `<div class="bb-light-item" data-type="ext" data-title="${escapeHtml(eName)}" data-key="${escapeHtml(eKey || '')}">
                         <i class="fa-solid fa-grip-vertical bb-drag-handle"></i>
-                        <i class="fa-solid fa-puzzle-piece"></i> <span class="bb-ext-title">${escapeHtml(eName)}</span>
+                        <i class="fa-solid fa-puzzle-piece bb-ext-icon" aria-hidden="true"></i><span class="bb-ext-title">${escapeHtml(eName)}</span>
                     </div>`;
         }
         return '';
@@ -479,10 +505,11 @@ function openSorterModal() {
                 html += `
                     <div class="bb-light-item bb-light-folder" data-type="folder" data-title="${safeName}" data-original-title="${safeName}" data-color="${safeColor}" style="--folder-color: ${safeColor};">
                         <div class="bb-light-folder-header">
-                            <i class="fa-solid fa-grip-vertical bb-drag-handle" style="margin-right: 8px;"></i>
-                            <i class="fa-solid fa-folder" style="color: var(--folder-color);"></i> <b class="folder-title-text" style="color: var(--folder-color);">${safeName}</b>
-                            <i class="fa-solid fa-pen bb-edit-btn" style="margin-left:auto; cursor:pointer;" title="Переименовать"></i>
-                            <i class="fa-solid fa-trash bb-del-btn" style="color:#ef4444; margin-left:10px; cursor:pointer;" title="Удалить"></i>
+                            <i class="fa-solid fa-grip-vertical bb-drag-handle" title="Переместить папку"></i>
+                            <i class="fa-solid fa-folder" aria-hidden="true"></i>
+                            <span class="folder-title-text">${safeName}</span>
+                            <button type="button" class="bb-folder-action bb-edit-btn" title="Переименовать" aria-label="Переименовать папку"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                            <button type="button" class="bb-folder-action bb-del-btn" title="Удалить" aria-label="Удалить папку"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                         </div>
                         <div class="bb-light-folder-content">`;
                 
@@ -504,7 +531,8 @@ function openSorterModal() {
         <div id="bb-sort-modal-overlay">
             <div class="popup wide_dialogue_popup bb-sort-modal">
                 <div class="popup-header">
-                    <h2>Управление сортировкой</h2>
+                    <h2>Порядок расширений</h2>
+                    <p class="bb-sort-description">Перетаскивайте элементы за ручку, чтобы изменить расположение</p>
                 </div>
                 
                 <div class="popup-content bb-modal-grid">
@@ -519,10 +547,10 @@ function openSorterModal() {
                 </div>
                 
                 <div class="bb-sort-footer">
-                    <div class="menu_button interactable" id="bb-modal-add-folder"><i class="fa-solid fa-folder-plus"></i>&nbsp;Создать папку</div>
+                    <div class="menu_button interactable" id="bb-modal-add-folder"><i class="fa-solid fa-folder-plus"></i>&nbsp;Новая папка</div>
                     <div class="bb-sort-footer-actions">
                         <div class="menu_button interactable" id="bb-modal-cancel">Отмена</div>
-                        <div class="menu_button interactable" id="bb-modal-save" style="border-color: var(--SmartThemeBorderColor, #a855f7);">Применить</div>
+                        <div class="menu_button interactable" id="bb-modal-save">Применить</div>
                     </div>
                 </div>
             </div>
@@ -536,12 +564,13 @@ function openSorterModal() {
         if (name) {
             const safeName = escapeHtml(name.trim());
             $('#bb-modal-left').append(`
-                <div class="bb-light-item bb-light-folder" data-type="folder" data-title="${safeName}" data-color="#a855f7" style="--folder-color: #a855f7;">
+                <div class="bb-light-item bb-light-folder" data-type="folder" data-title="${safeName}" data-color="#8a9ba8" style="--folder-color: #8a9ba8;">
                     <div class="bb-light-folder-header">
-                        <i class="fa-solid fa-grip-vertical bb-drag-handle" style="margin-right: 8px;"></i>
-                        <i class="fa-solid fa-folder" style="color: var(--folder-color);"></i> <b class="folder-title-text" style="color: var(--folder-color);">${safeName}</b>
-                        <i class="fa-solid fa-pen bb-edit-btn" style="margin-left:auto; cursor:pointer;" title="Переименовать"></i>
-                        <i class="fa-solid fa-trash bb-del-btn" style="color:#ef4444; margin-left:10px; cursor:pointer;" title="Удалить"></i>
+                        <i class="fa-solid fa-grip-vertical bb-drag-handle" title="Переместить папку"></i>
+                        <i class="fa-solid fa-folder" aria-hidden="true"></i>
+                        <span class="folder-title-text">${safeName}</span>
+                        <button type="button" class="bb-folder-action bb-edit-btn" title="Переименовать" aria-label="Переименовать папку"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+                        <button type="button" class="bb-folder-action bb-del-btn" title="Удалить" aria-label="Удалить папку"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                     </div>
                     <div class="bb-light-folder-content"></div>
                 </div>
@@ -585,13 +614,13 @@ function openSorterModal() {
                 if (type === 'folder') {
                     const originalTitle = $(this).attr('data-original-title');
                     if (originalTitle) renamedFolders[originalTitle] = title;
-                    const color = $(this).attr('data-color') || '#a855f7';
+                    const color = $(this).attr('data-color') || '#8a9ba8';
                     createFolderElement(title, color); 
                     
                     const realFolder = findFolderElement(title);
                     realFolder.css('--folder-color', color);
                     realFolder.find('.bb-color-picker').val(color);
-                    realFolder.find('.bb-folder-title, .bb-folder-edit-main').css('color', color);
+                    realFolder.find('.bb-folder-icon').css('color', color);
 
                     realCol.append(realFolder);
                     targetArray.push({ type: 'folder', title: title });
@@ -631,6 +660,7 @@ function openSorterModal() {
         });
 
         preserveMissingExtensions(layout, renamedFolders);
+        updateFolderCounts();
         extension_settings[MODULE_NAME].layout = layout;
         saveSettingsDebounced();
         closeSorterModal();
@@ -644,7 +674,7 @@ function injectControls() {
     
     // Добавил margin-bottom: 5px, чтобы на мобилках кнопка не прилипала к нижним элементам
     const btnHtml = `
-        <div id="bb-open-sorter-btn" class="menu_button interactable" style="display:inline-flex; align-items:center; gap:6px; margin-right:5px; margin-bottom:5px; border-color: var(--SmartThemeBorderColor, #a855f7);">
+        <div id="bb-open-sorter-btn" class="menu_button interactable" title="Порядок расширений" aria-label="Порядок расширений">
             <i class="fa-solid fa-list-check"></i>
             <span>Управление сортировкой</span>
         </div>
